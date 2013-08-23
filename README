@@ -1,0 +1,71 @@
+An implementation of consistent hashing ring for distributed hash tables as
+a gen_server.
+
+Here is an informal explanation of the technique:
+  http://www.spiteful.com/2008/03/17/programmers-toolbox-part-3-consistent-hashing/
+
+Exports:
+
+start_link(Peers) -> ServerRef
+start_link(ServerName, Peers) -> ServerRef
+  Types:
+    Peers = [{Node, Opaque, Weight}]
+    Node = term()
+    Opaque = term()
+    Weight = int(), >= 1
+
+  Create a ring according to peer configuration Peers. Opaque is an opaque
+  data associated with the node. Greater weight makes the node own bigger
+  portion of the ring.
+
+  The ring creation time is N^2 where N is the sum of the nodes' weights.
+
+
+add(ServerRef, Peers) -> ok | {error, already_there, [Node]}
+
+  Add Peers to the ring. If any of the nodes being added is already in the
+  ring (the check is done by comparing node *names*), error is returned and
+  the ring remains intact.
+
+
+add(ServerRef, {Node, Opaque, Weight})
+
+  Equivalent to add(ServerRef, [{Node, Opaque, Weight}]).
+
+
+delete(ServerRef, [Node]) -> ok | {error, unknown_nodes, [Node]}
+
+  Removes nodes from the ring by their names. If any of the names doesn't
+  reference an existing node in the ring, an error is returned and the ring
+  remains intact.
+
+
+delete(ServerRef, Node)
+
+  Equivalent to delete(ServerRef, [Node]).
+
+
+get_config(ServerRef) -> Peers
+
+  Returns the current configuration of the ring. The order of nodes within
+  the returned list is not specified.
+
+
+lookup(ServerRef, Key) -> [{Node, Opaque}]
+
+  Types:
+    Key = term()
+
+  Look up the Ring for a list of nodes corresponding to Key. The returned
+  list is guaranteed to contain no duplicates.
+
+  The lookup time is log(N), where N is the sum of the nodes' weights.
+
+
+nodes(ServerRef) -> [{Node, Opaque}]
+
+  Return the list of nodes in the ring. The order of nodes in the returned
+  list is not specified, but it is guaranteed that the list contains no
+  duplicates.
+
+  This operation execution time is constant.
