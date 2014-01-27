@@ -71,10 +71,10 @@ node_shares(Ring) ->
                     (_, Acc) -> Acc
                 end, 0, Partitions)
     end,
-    lists:flatten([io_lib:format("\t~p weight ~p share ~p%~n",
+    lists:flatten([io_lib:format("\t~p weight ~p share ~.2f%~n",
                 [Node, Weight, Share])
             || {Node, _, Weight} <- get_config(Ring),
-            Share <- [100 * NodePartitions(Node) div 65536]]).
+            Share <- [100 * NodePartitions(Node) / 65536]]).
 
 partitions(Ring) ->
     partitions_from_ring(gen_server:call(Ring, {ring})).

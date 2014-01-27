@@ -1,37 +1,49 @@
--module(test_dht_ring).
+-module(dht_ring_test).
+
 -compile(export_all).
 
-start() ->
-  {ok, RingServer} = dht_ring:start_link([{undef, undef, 1000}]),
-  lists:foreach(
-    fun(X) -> dht_ring:lookup(RingServer, integer_to_list(X)) end,
-    lists:seq(1, 10)
-  ).
+-include_lib("eunit/include/eunit.hrl").
 
-test(Nodes, KeysQty, Expected) ->
+
+run_test_() ->
+  [{"Basic test with three peers", fun basic_test/0},
+   {"Test with one peer", fun vacuous_test/0},
+   {"Dynamic ring", fun dynamic_test/0}].
+
+check_distribution(Nodes, Expected) ->
   {ok, RingServer} = dht_ring:start_link(Nodes),
 
   true = (length(Nodes) == length(dht_ring:nodes(RingServer))),
+
+  KeysQty = length(Expected),
+
   true = KeysQty >= 1,
 
   Keys = lists:seq(1, KeysQty),
 
-  Results = lists:map(
-    fun(X) -> dht_ring:lookup(RingServer, integer_to_list(X)) end,
-    Keys
-  ),
+  [?assertMatch(E, dht_ring:lookup(RingServer, integer_to_list(Key))) || {Key, E} <- lists:zip(Keys, Expected)].
 
-  lists:foreach(
-    fun({K, E, G}) ->
-      if
-        E /= G -> io:format("FAIL: key=~p expected=~p got=~p~n", [K, E, G]);
-        true -> ok
-      end
-    end,
-    lists:zip3(Keys, Expected, Results)
-  ).
+basic_test() ->
+    check_distribution(
+        [{a, a, 5}, {b, b, 3}, {c, c, 2}],
+        [
+          [{a,a},{b,b},{c,c}],
+          [{a,a},{c,c},{b,b}],
+          [{c,c},{a,a},{b,b}],
+          [{a,a},{b,b},{c,c}],
+          [{a,a},{b,b},{c,c}],
+          [{c,c},{a,a},{b,b}],
+          [{a,a},{b,b},{c,c}],
+          [{c,c},{a,a},{b,b}],
+          [{b,b},{a,a},{c,c}],
+          [{b,b},{a,a},{c,c}]
+        ]
+    ).
 
-test_dynamic() ->
+vacuous_test() ->
+    check_distribution([{n, n, 1}], lists:duplicate(10, [{n, n}])).
+
+dynamic_test() ->
   A = {a, a, 5},
   B = {b, b, 3},
   C = {c, c, 10},
@@ -122,35 +134,3 @@ compare_configs(Ring1, Ring2) ->
     true -> pass;
     _ -> {fail, Config1, Config2}
   end.
-
-
-test() ->
-  test(
-    [{a, a, 5}, {b, b, 3}, {c, c, 2}],
-    10,
-    [
-      [{a,a},{b,b},{c,c}],
-      [{a,a},{c,c},{b,b}],
-      [{c,c},{a,a},{b,b}],
-      [{a,a},{b,b},{c,c}],
-      [{a,a},{b,b},{c,c}],
-      [{c,c},{a,a},{b,b}],
-      [{a,a},{b,b},{c,c}],
-      [{c,c},{a,a},{b,b}],
-      [{b,b},{a,a},{c,c}],
-      [{b,b},{a,a},{c,c}]
-    ]
-  ),
-
-  test(
-    [{n, n, 1}],
-    10,
-    lists:duplicate(10, [{n, n}])
-  ),
-
-  test_dynamic().
-
-profile() ->
-  eprof:start(),
-  eprof:profile([], ?MODULE, start, []),
-  eprof:analyse().
