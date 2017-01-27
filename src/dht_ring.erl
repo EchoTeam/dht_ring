@@ -168,7 +168,7 @@ init(Peers) ->
         ]
     ),
     Ring = array:from_list(assemble_ring([], lists:reverse(RawRing), [], length(Peers))),
-    lager:info("Created a ring with ~b points in it.", [array:sparse_size(Ring)]),
+    error_logger:info_msg("Created a ring with ~b points in it.", [array:sparse_size(Ring)]),
     {ok, #state{ ring = Ring, nodes = Peers }}.
 
 terminate(_Reason, _State) ->
